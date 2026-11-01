@@ -25,7 +25,7 @@ export function createInitialDisks(): Disk[] {
       linuxDev: '/dev/nvme0n1',
       model: 'NVMe SSD Kingston KC3000 500 GB',
       interfaceType: 'NVMe PCIe 4.0',
-      totalSizeMB: 512000, // 500 GB
+      totalSizeMB: 476940, // 500 GB del fabricante (500.107.862.016 B) = 465,8 GiB
       sectorSize: 512,
       partitionTable: 'GPT',
       partitions: [
@@ -92,7 +92,7 @@ export function createInitialDisks(): Disk[] {
       linuxDev: '/dev/sda',
       model: 'Seagate IronWolf Pro 4 TB NAS',
       interfaceType: 'SATA III 6Gb/s',
-      totalSizeMB: 4194304, // 4 TB (4096 GB) -> Demonstrates 2 TB MBR barrier!
+      totalSizeMB: 3815447, // 4 TB del fabricante (4.000.787.030.016 B) = 3,64 TiB: supera la barrera MBR de 2 TiB
       sectorSize: 512,
       partitionTable: 'MBR',
       partitions: [
@@ -117,7 +117,7 @@ export function createInitialDisks(): Disk[] {
       linuxDev: '/dev/sdb',
       model: 'SanDisk Ultra Flair USB 32 GB',
       interfaceType: 'USB 3.2 Gen 1',
-      totalSizeMB: 32768, // 32 GB
+      totalSizeMB: 29340, // 32 GB del fabricante (~30,8 GB útiles) = 28,7 GiB
       sectorSize: 512,
       partitionTable: 'MBR',
       partitions: [
@@ -128,7 +128,7 @@ export function createInitialDisks(): Disk[] {
           role: 'primary',
           fileSystem: 'FAT32',
           clusterSize: 16384,
-          sizeMB: 32760,
+          sizeMB: 29339,
           offsetMB: 1,
           isActive: false,
           driveLetter: 'E:',
@@ -149,6 +149,14 @@ export function formatCapacity(sizeMB: number): string {
     return `${gb.toFixed(gb % 1 === 0 ? 0 : 1)} GB (${sizeMB.toLocaleString('es-ES')} MB)`;
   }
   return `${sizeMB.toLocaleString('es-ES')} MB`;
+}
+
+// Capacidad «comercial» del fabricante (base 10): 500 GB = 500.000.000.000 bytes, que el
+// sistema operativo muestra como 465,8 GB porque cuenta en base 2 (GiB).
+export function formatVendorCapacity(sizeMB: number): string {
+  const bytes = sizeMB * 1024 * 1024;
+  if (bytes >= 1e12) return `${(bytes / 1e12).toFixed(2)} TB`;
+  return `${(bytes / 1e9).toFixed(1)} GB`;
 }
 
 export function formatBytes(bytes: number): string {
@@ -360,6 +368,31 @@ export function evaluateBootDiagnostic(
     };
   }
 
+  if (firmware === 'BIOS' && disk.interfaceType.startsWith('NVMe')) {
+    return {
+      canBoot: false,
+      status: 'warning',
+      headline: 'BIOS/Legacy no puede arrancar desde una unidad NVMe',
+      details: [
+        'La BIOS clásica solo arranca desde dispositivos que su INT 13h sabe leer (SATA/IDE, USB emulado). Las unidades NVMe no tienen ese soporte en modo Legacy/CSM salvo placas con una Option ROM NVMe específica.',
+        `${disk.name} (${disk.model}) es NVMe: aunque la tabla y las particiones fueran correctas, el firmware no lo ofrece como dispositivo de arranque.`,
+      ],
+      recommendation:
+        disk.partitionTable === 'GPT'
+          ? 'Cambia el firmware a UEFI: el disco ya está en GPT.'
+          : 'Cambia el firmware a UEFI y convierte el disco a GPT, o practica el arranque BIOS + MBR en el HDD SATA (Disco 1).',
+      simulatedScreenOutput: {
+        screenTitle: 'BIOS Legacy — Dispositivo NVMe no arrancable',
+        screenType: 'bios-error',
+        lines: [
+          'BIOS Legacy (CSM) -> Enumerando dispositivos INT 13h: SATA, USB...',
+          `${disk.linuxDev} (${disk.interfaceType}) no aparece en la lista de arranque Legacy.`,
+          'Reboot and Select proper Boot device or Insert Boot Media in selected Boot device and press a key_',
+        ],
+      },
+    };
+  }
+
   if (firmware === 'BIOS' && disk.partitionTable === 'MBR') {
     const activePart = disk.partitions.find(
       (p) => p.role === 'primary' && p.isActive
@@ -561,10 +594,11 @@ export function evaluateBootDiagnostic(
     return {
       canBoot: false,
       status: 'error',
-      headline: 'Incompatibilidad nativa: Firmware UEFI puro sobre disco MBR',
+      headline: 'Windows en modo UEFI exige GPT: disco MBR no apto para instalar',
       details: [
-        'En sistemas Windows modernos, el instalador en modo UEFI rechaza instalar en discos con tabla MBR ("Windows no se puede instalar en este disco. El disco seleccionado tiene el estilo de partición MBR").',
-        'Para arrancar desde MBR en una placa UEFI sería necesario activar el módulo de compatibilidad CSM (Legacy BIOS), perdiendo Secure Boot y Fast Boot.',
+        'El instalador de Windows en modo UEFI rechaza los discos con tabla MBR ("Windows no se puede instalar en este disco. El disco seleccionado tiene el estilo de partición MBR").',
+        'La especificación UEFI sí admite arrancar desde MBR con una partición de sistema EFI de tipo 0xEF (Linux puede hacerlo), pero en este simulador las particiones EFI son de GPT y el escenario es la instalación de Windows.',
+        'La alternativa en placas UEFI es activar el módulo de compatibilidad CSM (Legacy BIOS), que desactiva Secure Boot, imprescindible para Windows 11.',
       ],
       recommendation:
         'Convierte la tabla de particiones a GPT (convert gpt) o cambia el modo de Firmware a BIOS/Legacy (CSM).',
@@ -610,6 +644,27 @@ export interface SectorHexBlock {
   hexBytes: string;
   meaning: string;
   highlightColor: 'sky' | 'emerald' | 'amber' | 'indigo' | 'rose';
+}
+
+function toLittleEndianHex(value: number): string {
+  return value
+    .toString(16)
+    .toUpperCase()
+    .padStart(8, '0')
+    .match(/../g)!
+    .reverse()
+    .join(' ');
+}
+
+// Dirección CHS de 3 bytes de una entrada MBR (geometría 255 cabezas × 63 sectores).
+// Más allá del cilindro 1023 no cabe y se escribe FE FF FF: manda el campo LBA.
+export function lbaToChsHex(lba: number): string {
+  const cylinder = Math.floor(lba / (255 * 63));
+  if (cylinder > 1023) return 'FE FF FF';
+  const head = Math.floor(lba / 63) % 255;
+  const sector = (lba % 63) + 1;
+  const bytes = [head, sector | ((cylinder >> 2) & 0xc0), cylinder & 0xff];
+  return bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 }
 
 export function generateSectorHexInspection(disk: Disk): {
@@ -677,28 +732,26 @@ export function generateSectorHexInspection(disk: Disk): {
                 ? '82'
                 : '07'; // NTFS / exFAT
 
-      const sectorsCount = Math.min(
-        0xffffffff,
-        Math.round((part.sizeMB * 1024 * 1024) / disk.sectorSize)
-      );
-      const countHex = sectorsCount
-        .toString(16)
-        .toUpperCase()
-        .padStart(8, '0')
-        .match(/../g)!
-        .reverse()
-        .join(' ');
+      const sectorsPerMB = (1024 * 1024) / disk.sectorSize;
+      const startLba = Math.min(0xffffffff, Math.round(part.offsetMB * sectorsPerMB));
+      const sectorsCount = Math.min(0xffffffff, Math.round(part.sizeMB * sectorsPerMB));
+      const startChs = lbaToChsHex(startLba);
+      const endChs = lbaToChsHex(startLba + sectorsCount - 1);
 
       return {
         offsetHex: offsetStr,
         lengthBytes: 16,
         title: `Entrada MBR #${slotIdx + 1}: Partición ${part.number} (${part.role.toUpperCase()})`,
-        hexBytes: `${bootByte} 20 21 00 ${typeByte} FE FF FF 00 08 00 00 ${countHex}`,
+        hexBytes: `${bootByte} ${startChs} ${typeByte} ${endChs} ${toLittleEndianHex(startLba)} ${toLittleEndianHex(sectorsCount)}`,
         meaning: `Flag Arranque: 0x${bootByte} (${
           part.isActive ? 'ACTIVA' : 'Inactiva'
         }) · Tipo ID: 0x${typeByte} (${
-          part.role === 'extended' ? 'Extendida LBA' : part.fileSystem
-        }) · Sectores LBA (32-bit LE): ${sectorsCount.toLocaleString('es-ES')} (${formatCapacity(
+          part.role === 'extended'
+            ? 'Extendida LBA'
+            : part.fileSystem === 'RAW'
+              ? 'sin formatear'
+              : part.fileSystem
+        }) · LBA inicial: ${startLba.toLocaleString('es-ES')} · Sectores (32-bit LE): ${sectorsCount.toLocaleString('es-ES')} (${formatCapacity(
           part.sizeMB
         ).split(' (')[0]})`,
         highlightColor: part.isActive
@@ -933,7 +986,29 @@ export function validateFormatPartition(
     };
   }
 
+  if (fileSystem === 'ext4' && clusterSize < 1024) {
+    return {
+      valid: false,
+      error: 'ext4 trabaja con bloques de 1 KB a 64 KB (lo habitual son 4 KB): un bloque de 512 B no es válido (mkfs.ext4 -b 512 falla).',
+    };
+  }
+
   if (fileSystem === 'FAT32') {
+    // Un volumen FAT32 necesita entre 65.525 y 268.435.445 clústeres: con menos sería FAT16
+    const clusterCount = Math.floor((partition.sizeMB * 1024 * 1024) / clusterSize);
+    const clusterLabel = clusterSize >= 1024 ? `${clusterSize / 1024} KB` : `${clusterSize} B`;
+    if (clusterCount < 65525) {
+      return {
+        valid: false,
+        error: `Con clústeres de ${clusterLabel} este volumen solo tendría ${clusterCount.toLocaleString('es-ES')} clústeres y FAT32 necesita al menos 65.525 (por debajo sería FAT16). Usa un clúster más pequeño: por eso una ESP de 300 MB se formatea con 4 KB.`,
+      };
+    }
+    if (clusterCount > 268435445) {
+      return {
+        valid: false,
+        error: `Con clústeres de ${clusterLabel} este volumen tendría ${clusterCount.toLocaleString('es-ES')} clústeres, más de los 268.435.445 que admite la FAT de 28 bits. Usa un clúster mayor.`,
+      };
+    }
     if (partition.sizeMB > FAT32_MAX_VOLUME_MB) {
       return {
         valid: false,
@@ -1040,17 +1115,24 @@ export function validateAddFileToPartition(
   return { valid: true };
 }
 
+// Numera y coloca las particiones en orden. En MBR las unidades lógicas viven dentro de la
+// extendida y se numeran a partir de 5 (sda5, sda6…) aunque haya menos de 4 primarias.
 export function renumberPartitions(partitions: Partition[]): Partition[] {
   let runningOffset = 1;
-  return partitions.map((p, idx) => {
-    const updated = {
-      ...p,
-      number: idx + 1,
-      offsetMB: runningOffset,
-    };
-    if (p.role !== 'logical') {
-      runningOffset += p.sizeMB;
+  let topLevelNumber = 0;
+  let logicalNumber = 4;
+  let logicalOffset = 0;
+  return partitions.map((p) => {
+    if (p.role === 'logical') {
+      logicalNumber += 1;
+      const updated = { ...p, number: logicalNumber, offsetMB: logicalOffset };
+      logicalOffset += p.sizeMB;
+      return updated;
     }
+    topLevelNumber += 1;
+    const updated = { ...p, number: topLevelNumber, offsetMB: runningOffset };
+    if (p.role === 'extended') logicalOffset = runningOffset + 1; // 1 MB para el primer EBR
+    runningOffset += p.sizeMB;
     return updated;
   });
 }
@@ -1080,13 +1162,13 @@ export const CHALLENGE_SCENARIOS: ChallengeScenario[] = [
     subtitle: 'BIOS/Legacy + 3 Primarias (1 Activa) + 1 Extendida con 2 Unidades Lógicas',
     difficulty: 'Intermedio',
     description:
-      'En el Disco 0 bajo firmware BIOS/Legacy y tabla MBR, el cliente necesita 5 volúmenes operativos. Como MBR solo admite 4 entradas en su tabla de 64 bytes, crea 3 particiones Primarias (marca la primera como Activa y formatéala en NTFS), 1 Partición Extendida y al menos 2 Unidades Lógicas formateadas dentro de ella.',
-    targetDiskId: 0,
+      'En el Disco 1 (HDD SATA de 4 TB) bajo firmware BIOS/Legacy y tabla MBR, el cliente necesita 5 volúmenes operativos (se usa el HDD porque una BIOS Legacy no arranca desde el NVMe del Disco 0). Como MBR solo admite 4 entradas en su tabla de 64 bytes, crea 3 particiones Primarias (marca la primera como Activa y formatéala en NTFS), 1 Partición Extendida y al menos 2 Unidades Lógicas formateadas dentro de ella.',
+    targetDiskId: 1,
     recommendedFirmware: 'BIOS',
     hintCommand:
-      'select disk 0 -> clean -> convert mbr -> create partition primary size=51200 -> format fs=ntfs quick -> active -> create partition primary size=51200 -> create partition primary size=51200 -> create partition extended size=204800 -> create partition logical size=81920 -> format fs=ntfs quick -> create partition logical size=81920 -> format fs=fat32 quick',
+      'select disk 1 -> clean -> convert mbr -> create partition primary size=51200 -> format fs=ntfs quick -> active -> create partition primary size=51200 -> create partition primary size=51200 -> create partition extended size=204800 -> create partition logical size=81920 -> format fs=ntfs quick -> create partition logical size=81920 -> format fs=ntfs quick',
     linuxHintCommand:
-      'parted /dev/nvme0n1 mklabel msdos && fdisk /dev/nvme0n1 (crear p1..p3 primarias, p4 extendida 0x0F y lógicas p5, p6)',
+      'parted /dev/sda mklabel msdos && fdisk /dev/sda (crear sda1..sda3 primarias, sda4 extendida 0x0F y lógicas sda5, sda6)',
     learningGoal:
       'Dominar la estructura de 64 bytes del MBR, el flag de arranque Activo (0x80) y los contenedores EBR (Partición Extendida + Unidades Lógicas).',
   },
@@ -1097,7 +1179,7 @@ export const CHALLENGE_SCENARIOS: ChallengeScenario[] = [
     subtitle: 'Migración de MBR (LBA 32-bit) a GPT (LBA 64-bit) en el HDD de 4 TB',
     difficulty: 'Básico',
     description:
-      'El Disco 1 (HDD SATA de 4 TB) está inicializado en MBR, lo que bloquea los últimos 2 TB debido al límite de direccionamiento de 32 bits (2^32 sectores x 512 bytes = 2 TB). Limpia y convierte el Disco 1 a GPT y crea una partición Primaria de más de 2.5 TB (> 2,621,440 MB) formateada en NTFS o ext4.',
+      'El Disco 1 (HDD SATA de 4 TB, que el sistema ve como 3,64 TB) está inicializado en MBR, lo que deja inservible todo lo que pasa de 2 TB (unos 1,6 TB) por el límite de direccionamiento de 32 bits (2^32 sectores x 512 bytes = 2 TiB). Limpia y convierte el Disco 1 a GPT y crea una partición Primaria de más de 2.5 TB (> 2,621,440 MB) formateada en NTFS o ext4.',
     targetDiskId: 1,
     recommendedFirmware: 'UEFI',
     hintCommand:
@@ -1193,19 +1275,19 @@ export function evaluateChallenge(
     }
 
     case 'reto-2-mbr-extended': {
-      const primaries = disk0.partitions.filter((p) => p.role === 'primary');
+      const primaries = disk1.partitions.filter((p) => p.role === 'primary');
       const hasActiveFormattedPrimary = primaries.some(
         (p) => p.isActive && p.fileSystem !== 'RAW'
       );
-      const hasExtended = disk0.partitions.some((p) => p.role === 'extended');
-      const formattedLogicals = disk0.partitions.filter(
+      const hasExtended = disk1.partitions.some((p) => p.role === 'extended');
+      const formattedLogicals = disk1.partitions.filter(
         (p) => p.role === 'logical' && p.fileSystem !== 'RAW'
       );
       return [
         {
           id: 'r2-fw',
-          label: 'Firmware en BIOS/Legacy y Disco 0 con tabla MBR',
-          passed: firmware === 'BIOS' && disk0.partitionTable === 'MBR',
+          label: 'Firmware en BIOS/Legacy y Disco 1 con tabla MBR',
+          passed: firmware === 'BIOS' && disk1.partitionTable === 'MBR',
         },
         {
           id: 'r2-prim',
@@ -1331,6 +1413,32 @@ export function evaluateChallenge(
     default:
       return [];
   }
+}
+
+// Letra o punto de montaje tras formatear: DiskPart no asigna letras al formatear, así que
+// se conserva la que hubiera; swap y la ESP tienen el suyo, y ext4 recibe «/» si está libre.
+function formattedMountPoint(
+  p: Partition,
+  fs: Exclude<FileSystemType, 'RAW'>,
+  disk: Disk
+): string | undefined {
+  if (fs === 'swap') return '[SWAP]';
+  if (p.role === 'efi') return 'S (ESP)';
+  const current = p.driveLetter && !['[SWAP]', 'S (ESP)'].includes(p.driveLetter) ? p.driveLetter : undefined;
+  if (fs === 'ext4') {
+    if (current?.startsWith('/')) return current;
+    const rootTaken = disk.partitions.some((o) => o.id !== p.id && o.driveLetter === '/');
+    return rootTaken ? undefined : '/';
+  }
+  return current?.startsWith('/') ? undefined : current;
+}
+
+// Identificador único aunque se creen varias particiones en el mismo milisegundo (secuencias
+// de comandos del tour o de una pista): con Date.now() a secas dos particiones compartían id.
+let partitionIdCounter = 0;
+function nextPartitionId(diskId: number): string {
+  partitionIdCounter += 1;
+  return `part-${diskId}-${Date.now().toString(36)}-${partitionIdCounter}`;
 }
 
 export interface DiskpartExecutionResult {
@@ -1483,6 +1591,7 @@ export function executeDiskpartCommand(
         `Tamaño de sector físico/lógico : ${currentDisk.sectorSize} bytes`,
         `Sectores LBA totales           : ${totalSectors.toLocaleString('es-ES')}`,
         `Capacidad física total         : ${formatCapacity(currentDisk.totalSizeMB)}`,
+        `Capacidad comercial (base 10)  : ${formatVendorCapacity(currentDisk.totalSizeMB)} (el fabricante cuenta 1 GB = 10^9 bytes)`,
         `Capacidad direccionable actual : ${formatCapacity(space.addressableMB)}`,
         space.mbrLockedOver2TBMB > 0
           ? `ALERTA MBR 32-BIT LBA          : ${formatCapacity(space.mbrLockedOver2TBMB)} bloqueados por superar el límite de 2 TB.`
@@ -1542,7 +1651,7 @@ export function executeDiskpartCommand(
         'Sistemas de archivos disponibles para formateo en el simulador:',
         '  Tipo     Clúster Estándar   Archivo Máx.           Volumen Máx.   Características Clave',
         '  -------  -----------------  ---------------------  -------------  -----------------------------------------------',
-        '  NTFS     4096 B (512B-64K)  16 TB / 8 PB           16 TB - 256TB  Journaling, ACLs, MFT Residente (<=700B)',
+        '  NTFS     4096 B (512B-64K)  16 TB / 256 TB         16 TB - 256TB  Journaling, ACLs, MFT Residente (<=700B)',
         '  FAT32    4096 B (512B-32K)  4 GB - 1 B (2^32 - 1)  32 GB / 2 TB   Estándar obligatorio UEFI ESP, sin Journaling',
         '  exFAT    32768 B (4K-64K)   16 EB                  128 PB         Ideal Flash/USB >32GB, supera límite 4GB FAT32',
         '  ext4     4096 B (1K-64K)    16 TB                  1 EB           Inodos + Extents Linux, Journaling JBD2',
@@ -1723,7 +1832,7 @@ export function executeDiskpartCommand(
       };
     }
 
-    const newPartId = `part-${currentDisk.id}-${Date.now()}`;
+    const newPartId = nextPartitionId(currentDisk.id);
     const newPart: Partition = {
       id: newPartId,
       number: currentDisk.partitions.length + 1,
@@ -1931,14 +2040,7 @@ export function executeDiskpartCommand(
             clusterSize,
             label: newLabel,
             files: [],
-            driveLetter:
-              targetFs === 'swap'
-                ? '[SWAP]'
-                : targetFs === 'ext4'
-                  ? '/'
-                  : p.role === 'efi'
-                    ? 'S (ESP)'
-                    : p.driveLetter || 'F:',
+            driveLetter: formattedMountPoint(p, targetFs, currentDisk),
           }
         : p
     );
@@ -1948,6 +2050,10 @@ export function executeDiskpartCommand(
     );
 
     const devPath = getPartLinuxDev(currentDisk, currentPart.number);
+    const linuxOnlyNote =
+      targetFs === 'ext4' || targetFs === 'swap'
+        ? `\nNota: DiskPart real no sabe crear ${targetFs}; en Linux se hace con el comando equivalente que aparece arriba.`
+        : '';
     const linuxCmd =
       targetFs === 'ext4'
         ? `mkfs.ext4 -b ${clusterSize} -L "${newLabel}" ${devPath}`
@@ -1969,6 +2075,7 @@ export function executeDiskpartCommand(
         `  100 por ciento completado.`,
         `DiskPart formateó el volumen correctamente en ${targetFs} (Tamaño de clúster/bloque: ${clusterSize} bytes, Etiqueta: "${newLabel}").`,
         validation.warning ? `\n${validation.warning}` : '',
+        linuxOnlyNote,
       ]
         .filter(Boolean)
         .join('\n'),
@@ -2048,6 +2155,19 @@ export function executeDiskpartCommand(
     const formattedLetter = rawLetter.startsWith('/')
       ? rawLetter
       : `${rawLetter.toUpperCase()}:`;
+
+    const owner = disks
+      .flatMap((d) => d.partitions.map((p) => ({ d, p })))
+      .find(({ p }) => p.id !== currentPart.id && p.driveLetter === formattedLetter);
+    if (owner) {
+      return {
+        disks,
+        selectedDiskId,
+        selectedPartitionId,
+        status: 'error',
+        output: `La letra o punto de montaje "${formattedLetter}" ya está en uso por la Partición ${owner.p.number} del ${owner.d.name}. Elige otro.`,
+      };
+    }
 
     const nextPartitions = currentDisk.partitions.map((p) =>
       p.id === currentPart.id ? { ...p, driveLetter: formattedLetter } : p

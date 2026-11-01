@@ -1,120 +1,129 @@
-<div align="center">
-  <a href="https://www.unfantasmaenelsistema.com/" target="_blank" rel="noopener noreferrer">
-    <img src="./public/assets/aistudio/icono_81a3db5b.png" alt="Logo Un Fantasma en el Sistema" width="120" />
-  </a>
+<p align="center">
+  <a href="https://www.unfantasmaenelsistema.com"><img src="public/assets/aistudio/icono_81a3db5b.png" width="110" alt="Un fantasma en el sistema"></a>
+</p>
 
-  # Simulador de Particionado y Sistemas de Archivos
-  ### Laboratorio Didáctico Interactivo: MBR vs. GPT · BIOS/Legacy vs. UEFI · NTFS, FAT32, exFAT, ext4 y Swap · Consola DiskPart / Parted
+<h1 align="center">Simulador de Particionado y Sistemas de Archivos</h1>
 
-  [**🌐 Un Fantasma en el Sistema (https://www.unfantasmaenelsistema.com/)**](https://www.unfantasmaenelsistema.com/)
-</div>
+<p align="center">
+  <b>Particiona, formatea y arranca discos virtuales con DiskPart y sus equivalentes de Linux</b><br>
+  MBR y GPT · BIOS/Legacy y UEFI · Sector 0 en hexadecimal · NTFS, FAT32, exFAT, ext4 y swap · Clústeres y slack · 5 retos autoevaluables
+</p>
 
----
+<p align="center">
+  <a href="https://unfantasmaenelsistema.github.io/Simulador-Particionado-y-Sistemas-de-Archivos/"><b>▶ Abrir el simulador</b></a> ·
+  <a href="#qué-hace">Qué hace</a> ·
+  <a href="#para-clase">Para clase</a> ·
+  <a href="#qué-modela-y-qué-no">Qué modela</a> ·
+  <a href="#desarrollo">Desarrollo</a> ·
+  <a href="https://www.unfantasmaenelsistema.com">unfantasmaenelsistema.com</a> ·
+  <a href="LICENSE">MIT</a>
+</p>
 
-## 📖 Descripción General
+<p align="center">
+  <img src="https://img.shields.io/badge/navegador-sin_servidor-10b981?style=flat-square" alt="Sin servidor">
+  <img src="https://img.shields.io/badge/datos-100%25_locales-0284c7?style=flat-square" alt="Datos 100 % locales">
+  <img src="https://img.shields.io/badge/FP-SMR_%C2%B7_ASIR-f59e0b?style=flat-square" alt="FP SMR y ASIR">
+  <img src="https://img.shields.io/badge/licencia-MIT-blue?style=flat-square" alt="MIT">
+</p>
 
-El **Simulador de Particionado y Sistemas de Archivos** es una herramienta interactiva de grado educativo y técnico diseñada para estudiantes y profesionales de **Sistemas Microinformáticos y Redes (SMR)**, **Administración de Sistemas Informáticos en Red (ASIR)** y **Desarrollo de Aplicaciones (DAM/DAW)**.
+<p align="center">
+  <img src="docs/capturas/01-discos-y-diskpart.webp" width="900" alt="Pestaña Discos y CLI: tres discos virtuales, selector de firmware y tabla, diagnóstico de arranque y mapa de particiones del NVMe">
+</p>
 
-Recrea en tiempo real tanto una interfaz visual de bloques al estilo **GParted / Administración de Discos de Windows** como una consola interactiva sincronizada **`DISKPART.EXE`** con traducción inmediata a utilidades **GNU/Linux (`parted`, `fdisk`, `lsblk`, `mkfs`)**.
+Tres discos virtuales (un NVMe de 500 GB, un HDD SATA de 4 TB y un pendrive de 32 GB) para practicar todo el ciclo: inicializar en MBR o GPT, crear particiones primarias, extendidas, lógicas, EFI y MSR, formatearlas con distintos tamaños de clúster y comprobar si el equipo arranca con BIOS o con UEFI. Cada acción de la interfaz se traduce a su comando de DiskPart y a su equivalente en Linux (`parted`, `mkfs`, `mkswap`), y también se pueden escribir los comandos a mano en la consola.
 
----
+> [!NOTE]
+> Es un modelo didáctico: no toca ningún disco real. Las estructuras (tabla MBR de 64 bytes, cabecera GPT, GUID de tipo, límites de FAT32, NTFS, exFAT y ext4) son las reales; la ocupación de metadatos de cada sistema de archivos es una aproximación.
 
-## 🖼️ Capturas del Simulador
+## Qué hace
 
-### 1. Administrador Visual de Discos (GParted / Disk Management) y Consola `DISKPART>` Sincronizada
-![Vista General del Administrador de Discos y Consola DiskPart](./public/docs/screenshots/01-administrador-discos-diskpart.svg)
+- **Discos y consola DiskPart**: `list disk`, `select`, `detail`, `clean`, `convert mbr|gpt`, `create partition primary|extended|logical|efi|msr`, `format fs=… unit=… label=…`, `shrink`, `extend`, `active`, `assign` y `delete`, con su equivalente de Linux debajo de cada comando.
+- **Capacidad real**: el disco «de 500 GB» aparece como 465,8 GB y el de 4 TB como 3,64 TB, porque el fabricante cuenta en base 10 y el sistema en base 2. `detail disk` muestra las dos cifras.
+- **Diagnóstico de arranque** para cada combinación: BIOS + MBR (partición activa y VBR), UEFI + GPT (ESP en FAT32 y volumen del sistema), BIOS + GPT, UEFI + MBR y BIOS sobre un NVMe.
+- **Sector 0 en hexadecimal**: código de arranque, firma de disco, las 4 entradas de 16 bytes con flag 0x80, CHS, tipo, LBA de inicio y número de sectores calculados de verdad, y la firma 0x55AA; en GPT, el MBR protector 0xEE, la cabecera «EFI PART» y los GUID de tipo de cada partición.
+- **Laboratorio de clústeres**: espacio en disco frente a tamaño lógico, slack space, archivos residentes en la MFT de NTFS y el límite de 4 GB por archivo de FAT32.
+- **Validaciones con explicación**: 4 primarias o 3 + extendida en MBR, barrera de 2 TiB, 128 entradas en GPT, FAT32 con su mínimo de 65.525 clústeres, ext4 sin bloques de 512 B, letras de unidad que no se repiten.
+- **Cinco retos autoevaluables** y un **tour guiado** que aparece la primera vez.
 
-### 2. Inspector Hexadecimal en Tiempo Real (Sector 0 MBR / Cabecera GPT) y Emulador de Arranque POST
-![Inspector Hexadecimal del Sector 0 y Emulador de Arranque POST](./public/docs/screenshots/02-inspector-hex-sector0-post.svg)
+<p align="center">
+  <img src="docs/capturas/02-sector0-hex-y-arranque.webp" width="700" alt="Sector 0 de un disco MBR con tres primarias y una extendida, cada entrada con su LBA de inicio, y emulador de arranque BIOS con éxito">
+</p>
 
-### 3. Simulador de Clústeres, Límite de 4 GB en FAT32, Slack Space y Atributos Residentes MFT (NTFS)
-![Simulador de Clústeres, Slack Space y Límite 4 GB FAT32](./public/docs/screenshots/03-simulador-clusteres-slack-mft.svg)
+## Para clase
 
-### 4. Laboratorio de Retos Prácticos Autoevaluables en Vivo
-![Retos Prácticos Autoevaluables](./public/docs/screenshots/04-retos-practicos-autoevaluables.svg)
+| Reto | Disco | Qué se practica |
+| :-- | :-- | :-- |
+| 01 · Windows 11 en UEFI + GPT | NVMe | ESP en FAT32, MSR y volumen NTFS con letra C: |
+| 02 · Más de 4 particiones en MBR | HDD SATA | 3 primarias (una activa), extendida y 2 lógicas con BIOS Legacy |
+| 03 · La barrera de los 2 TB | HDD SATA | Pasar de MBR a GPT para usar toda la capacidad |
+| 04 · El error de los 4 GB | Pendrive | Una ISO de 4,7 GB no cabe en FAT32: exFAT o NTFS con clúster de 64 KB |
+| 05 · Arranque dual | NVMe | ESP compartida, NTFS para Windows, ext4 y swap para Linux |
 
----
+Cada reto tiene su pista con los comandos de DiskPart y de Linux; las pruebas automáticas del repositorio ejecutan esas pistas y comprueban que completan el reto. El botón **Restaurar** devuelve los tres discos a su estado inicial.
 
-## ⚙️ Mecánica Didáctica y Características Técnicas
+<p align="center">
+  <img src="docs/capturas/03-clusteres-y-limite-fat32.webp" width="700" alt="Laboratorio de clústeres en el pendrive FAT32: la ISO de 4,7 GB se rechaza por el límite de 4 GB por archivo">
+</p>
 
-### 1. Tablas de Particiones: MBR (Master Boot Record) vs. GPT (GUID Partition Table)
-- **Límite de las 4 Particiones Primarias en MBR**: Reproduce fielmente la estructura de **64 bytes** ($4 \times 16\text{ bytes}$) de la tabla de particiones en el Sector 0 (`0x1BE - 0x1FD`). Para crear más de 4 volúmenes en MBR, el alumno debe crear una **Partición Extendida (`0x0F`)** y alojar **Unidades Lógicas** en su interior mediante registros EBR encadenados.
-- **Barrera Matemática de los 2 TB en MBR**: En el **Disco 1 (HDD SATA de 4 TB)**, cuando está inicializado en MBR con sectores de 512 bytes, el direccionamiento LBA de 32 bits ($2^{32} \times 512\text{ B} = 2\text{ TB}$) bloquea visual y funcionalmente los 2 TB superiores hasta que el alumno convierte el disco a **GPT (LBA de 64 bits)**.
-- **Arquitectura GPT**: Soporta hasta **128 particiones primarias** sin necesidad de partición extendida, incluye el **Protective MBR (`0xEE`)** en LBA 0, la cabecera primaria **`EFI PART`** en LBA 1 con verificación CRC32 y la copia de seguridad secundaria al final del disco.
+## Qué modela y qué no
 
-### 2. Esquemas de Arranque: BIOS / Legacy (CSM) vs. UEFI Moderno
-- **Diagnóstico en Tiempo Real y Emulador POST**:
-  - **BIOS / Legacy + MBR**: Requiere exactamente una partición Primaria marcada como **Activa (`0x80`)** con un VBR (*Volume Boot Record*) formateado.
-  - **UEFI + GPT**: Exige una **Partición del Sistema EFI (ESP)** con GUID `C12A7328-F81F-11D2-BA4B-00A0C93EC93B` formateada obligatoriamente en **FAT32** para que el firmware de la placa base pueda montar y ejecutar `bootmgfw.efi` o `grubx64.efi`.
-  - **Cruces incompatibles (`UEFI + MBR` o `BIOS + GPT`)**: Reproduce los mensajes de error reales del instalador de Windows y de la BIOS/UEFI.
+- La BIOS Legacy no arranca desde NVMe (salvo placas con una Option ROM específica), así que el reto de MBR + BIOS se hace en el HDD SATA.
+- UEFI puede arrancar desde MBR con una partición 0xEF; el simulador lo explica, pero trata ese caso como no apto porque el escenario es la instalación de Windows, que en UEFI exige GPT.
+- DiskPart real no formatea ext4 ni swap: el simulador lo permite para practicar el arranque dual y lo indica junto al comando de Linux equivalente.
+- Al reducir o eliminar una partición, las siguientes se recolocan a continuación; un disco real dejaría el hueco donde estaba.
 
-### 3. Sistemas de Archivos (`NTFS`, `FAT32`, `exFAT`, `ext4`, `swap`) y Matemática de Clústeres
-- **Límite de Tamaño de Archivo de 4 GB en FAT32**: Intentar guardar la imagen ISO `ubuntu_24_04_desktop_amd64.iso` (**4.70 GB**) en un volumen FAT32 dispara el error real de desbordamiento del campo de 32 bits ($2^{32} - 1 = 4,294,967,295\text{ bytes}$), aun cuando el pendrive tenga 32 GB libres.
-- **Cálculo de Fragmentación Interna (Slack Space)**:
-  $$\text{Clústeres Ocupados} = N_{\text{archivos}} \times \left\lceil \frac{\text{Tamaño Archivo (Bytes)}}{\text{Tamaño Clúster (Bytes)}} \right\rceil$$
-  $$\text{Slack Space} = (\text{Clústeres Ocupados} \times \text{Tamaño Clúster}) - \text{Tamaño Lógico Total}$$
-- **Atributos Residentes en la MFT de NTFS ($\le 700\text{ B}$)**: Muestra cómo NTFS almacena los microarchivos directamente dentro del registro de 1 KB de la *Master File Table* (`$DATA` residente), ocupando **0 clústeres externos y 0 bytes de Slack Space**.
+## Privacidad
 
----
+Todo se ejecuta en el navegador, sin servidor ni cuentas. Solo se guarda en el propio navegador que el tour ya se ha visto. Las fuentes van incluidas en la web y una política CSP estricta impide cargar código o estilos de terceros.
 
-## 💻 Comandos Soportados en la Consola Interactiva `DISKPART>`
+## Desarrollo
 
-| Comando DiskPart / Linux | Descripción |
-| :--- | :--- |
-| `list disk` / `fdisk -l` | Lista todos los discos físicos conectados (`/dev/nvme0n1`, `/dev/sda`, `/dev/sdb`). |
-| `select disk <0\|1\|2>` | Selecciona la unidad física activa. |
-| `detail disk` | Muestra geometría física, sectores LBA totales y capacidad direccionable. |
-| `clean` / `wipefs -a` | Elimina todas las particiones y deja el disco sin inicializar (`RAW`). |
-| `convert mbr` / `convert gpt` | Inicializa o convierte el esquema de particiones del disco entre MBR y GPT. |
-| `list partition` / `lsblk` | Lista las particiones del disco activo con su punto de montaje y tamaño de clúster. |
-| `select partition <N>` | Selecciona la partición número `N` del disco actual. |
-| `detail partition` | Inspecciona el GUID/ID hexadecimal, offset LBA, clúster y consumo físico/Slack. |
-| `filesystems` | Muestra la tabla técnica de sistemas de archivos soportados. |
-| `create partition primary [size=<MB>]` | Crea una partición primaria en MBR o GPT. |
-| `create partition efi [size=<MB>]` | Crea una Partición del Sistema EFI (ESP) en discos GPT. |
-| `create partition msr [size=<MB>]` | Crea una Partición Reservada de Microsoft (MSR, 16 MB) en discos GPT. |
-| `create partition extended [size=<MB>]` | Crea una Partición Extendida contenedora en discos MBR. |
-| `create partition logical [size=<MB>]` | Crea una Unidad Lógica dentro de la Partición Extendida en MBR. |
-| `shrink desired=<MB>` | Reduce el tamaño del volumen seleccionado liberando espacio no asignado. |
-| `extend [size=<MB>]` | Amplía el volumen seleccionado utilizando espacio no asignado contiguo. |
-| `format fs=<ntfs\|fat32\|exfat\|ext4\|swap> [unit=<512..65536>] [label="..."] [quick]` | Formatea la partición con el sistema de archivos y tamaño de clúster indicados. |
-| `active` / `inactive` | Activa o desactiva el flag de arranque MBR (`0x80`) en una partición primaria. |
-| `assign letter=<C..Z>` | Asigna letra de unidad o punto de montaje Linux (`/`, `/boot/efi`). |
-| `delete partition` | Elimina la partición seleccionada. |
+Requisitos: Node.js 20 o superior.
 
----
-
-## 🚀 Instalación Local y Despliegue en GitHub Pages
-
-### 1. Ejecución en entorno local
 ```bash
-# 1. Clonar el repositorio
-git clone https://github.com/TU_USUARIO/TU_REPOSITORIO.git
-cd TU_REPOSITORIO
-
-# 2. Instalar dependencias
-npm install
-
-# 3. Iniciar servidor de desarrollo (http://localhost:3000)
-npm run dev
-
-# 4. Compilar versión estática de producción en ./dist
-npm run build
+git clone https://github.com/unfantasmaenelsistema/Simulador-Particionado-y-Sistemas-de-Archivos.git
+cd Simulador-Particionado-y-Sistemas-de-Archivos
+npm ci
+npm run dev      # http://localhost:3000
+npm test         # pruebas del motor de discos (Vitest)
+npm run lint     # comprobación de tipos
+npm run build    # versión estática en dist/
 ```
 
-### 2. Despliegue automático en GitHub Pages (Ya preconfigurado)
-Este proyecto incluye configuración de rutas relativas (`base: './'` en `vite.config.ts`), archivo `.nojekyll` y el flujo de trabajo oficial de **GitHub Actions** en `.github/workflows/deploy.yml`:
+El workflow `.github/workflows/deploy.yml` comprueba tipos, pasa las pruebas, compila y publica `dist/` en GitHub Pages en cada push a `main`.
 
-1. Sube este código a un repositorio en tu cuenta de **GitHub** (rama `main` o `master`).
-2. En tu repositorio de GitHub, entra en **Settings** $\rightarrow$ **Pages** (en el menú lateral izquierdo).
-3. En la sección **Build and deployment** $\rightarrow$ **Source**, selecciona **GitHub Actions**.
-4. El workflow **Deploy to GitHub Pages** se ejecutará automáticamente y publicará la aplicación en:
-   `https://<tu-usuario>.github.io/<nombre-del-repositorio>/`
+```text
+src/
+├── types/storage.ts           # tipos, límites y especificaciones de cada sistema de archivos
+├── utils/diskEngine.ts        # discos, DiskPart, validaciones, arranque, hex del sector 0 y retos
+├── utils/diskEngine.test.ts
+└── components/                # mapa del disco, consola, hex y arranque, clústeres, retos, guía y tour
+```
 
----
+<p align="center">
+  <img src="docs/capturas/04-retos-autoevaluables.webp" width="700" alt="Panel de retos prácticos con los requisitos de cada uno y su estado">
+</p>
 
-## 👻 Autoría y Recursos Didácticos
+## Cambios
 
-Desarrollado para [**Un Fantasma en el Sistema**](https://www.unfantasmaenelsistema.com/).
-Visita la web oficial para más simuladores, artículos técnicos y laboratorios de sistemas y ciberseguridad:
-👉 **[https://www.unfantasmaenelsistema.com/](https://www.unfantasmaenelsistema.com/)**
+### 2.0.0 (2026-11-01)
+
+- Publicado en la organización con despliegue en GitHub Pages: el workflow original no podía funcionar (`npm install` fallaba por un conflicto de versiones de `esbuild` y la caché de npm no tenía lockfile).
+- **Identificadores de partición únicos**: se generaban con la hora en milisegundos y dos particiones creadas seguidas (pistas, tour) compartían id, de modo que el formato se aplicaba a la que no era. La pista del reto 5 acababa con ext4 y swap en la misma partición.
+- **Hex del sector 0**: las cuatro entradas MBR tenían siempre la misma LBA de inicio (2048) y el mismo CHS; ahora se calculan para cada partición.
+- **Arranque**: la BIOS Legacy ya no arranca desde el NVMe; el reto 2 pasa al HDD SATA. El caso UEFI + MBR explica que la especificación sí lo admite y que es Windows quien exige GPT.
+- **Capacidades reales**: 465,8 GB, 3,64 TB y 28,7 GB en lugar de cifras redondas en base 2, con la capacidad comercial en `detail disk`.
+- **Lógicas** numeradas desde 5 (sda5, sda6) y colocadas dentro de la extendida.
+- **Formato**: FAT32 exige entre 65.525 y 268.435.445 clústeres, ext4 no admite bloques de 512 B, `format` ya no pone la letra F: a todas las particiones y `assign` no repite letras. El límite de archivo de NTFS estaba mal (8 PB requiere clústeres de 2 MB, no de 64 KB).
+- **Interfaz**: si al crear una partición falla el formato, el formulario lo explica en lugar de cerrarse. En el móvil la página se salía por la derecha y el tour inicial no se podía cerrar; ahora se adapta y solo aparece la primera vez. El registro inicial de la consola se calcula con el propio motor.
+- Fuentes incluidas en la web en lugar de Google Fonts, CSP estricta, fuera dependencias de Gemini y Express que no se usaban y la carpeta `.aistudio` subida por error, y 18 pruebas automáticas del motor.
+
+### 1.0.0
+
+- Versión inicial generada con Google AI Studio.
+
+## Créditos y licencia
+
+Creado por **[Un Fantasma en el Sistema](https://www.unfantasmaenelsistema.com)** para los módulos de sistemas operativos y montaje de equipos de FP. Fuentes DM Sans, Plus Jakarta Sans y JetBrains Mono (SIL Open Font License) vía Fontsource; iconos de Lucide (ISC).
+
+Código bajo licencia [MIT](LICENSE).

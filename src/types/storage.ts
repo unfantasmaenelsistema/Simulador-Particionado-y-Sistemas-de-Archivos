@@ -110,7 +110,7 @@ export const FILESYSTEM_SPECS: Record<
     name: 'NTFS',
     fullName: 'New Technology File System',
     osNative: 'Windows Server / Windows 10 & 11',
-    maxFileSizeLabel: '16 TB (estándar) / 8 PB (clúster 64 KB)',
+    maxFileSizeLabel: '16 TB (clúster 4 KB) / 256 TB (clúster 64 KB) / 8 PB (clúster 2 MB, Windows 10 1709+)',
     maxFileSizeBytes: 16 * 1024 * 1024 * 1024 * 1024,
     maxVolumeSizeLabel: '16 TB (4 KB clúster) / 256 TB (64 KB)',
     maxVolumeSizeMB: 16 * 1024 * 1024,

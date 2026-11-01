@@ -3,20 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="referrer" content="no-referrer" />
     <title>Simulador de Particionado y Sistemas de Archivos | Un Fantasma en el Sistema</title>
     <meta name="description" content="Simulador didáctico e interactivo de particionado de discos (MBR vs GPT, BIOS/Legacy vs UEFI), sistemas de archivos (NTFS, FAT32, ext4), cálculo de clústeres y consola DiskPart." />
     <meta property="og:title" content="Simulador de Particionado y Sistemas de Archivos" />
     <meta property="og:description" content="Simulador didáctico e interactivo de particionado de discos (MBR vs GPT, BIOS/Legacy vs UEFI), sistemas de archivos (NTFS, FAT32, ext4), cálculo de clústeres y consola DiskPart." />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:url" content="https://unfantasmaenelsistema.github.io/Simulador-Particionado-y-Sistemas-de-Archivos/" />
+    <meta name="theme-color" content="#020617" />
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" type="image/png" href="./assets/aistudio/icono_81a3db5b.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-200">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
 
