@@ -42,6 +42,8 @@ import { GuidedTour, TourStep } from './components/GuidedTour';
 
 type ActiveTab = 'workspace' | 'hex-boot' | 'clusters' | 'challenges' | 'guide';
 
+const TOUR_SEEN_KEY = 'simulador-particionado:tour-visto';
+
 export default function App() {
   const [disks, setDisks] = useState<Disk[]>(() => createInitialDisks());
   const [selectedDiskId, setSelectedDiskId] = useState<number>(0);
@@ -53,8 +55,14 @@ export default function App() {
   const [activeChallengeId, setActiveChallengeId] =
     useState<string>('reto-1-uefi-gpt');
 
-  // Guided Tour State (Starts active on initial load to guide the user through Challenge 1)
-  const [isTourOpen, setIsTourOpen] = useState<boolean>(true);
+  // Guided Tour State: se abre en la primera visita; tras cerrarlo se recuerda en este navegador
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(TOUR_SEEN_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [tourStepIndex, setTourStepIndex] = useState<number>(0);
 
   // Create Partition Modal State
@@ -76,18 +84,13 @@ export default function App() {
   const [resizeAmountMB, setResizeAmountMB] = useState<number>(20480);
 
   // Terminal Log State
-  const [terminalEntries, setTerminalEntries] = useState<TerminalEntry[]>([
+  const [terminalEntries, setTerminalEntries] = useState<TerminalEntry[]>(() => [
     {
       id: 'init-1',
-      timestamp: '10:00:00',
+      timestamp: new Date().toTimeString().slice(0, 8),
       command: 'list disk',
       linuxEquivalent: 'fdisk -l',
-      output:
-        '  Núm Disco  Dispositivo    Estado         Tamaño     Disp.      Gpt  Modelo\n' +
-        '  ---------  -------------  -------------  ---------  ---------  ---  ------------------------------\n' +
-        '* Disco 0    /dev/nvme0n1   En línea       500.0 GB   299.7 GB    *   NVMe SSD Kingston KC3000 500 GB\n' +
-        '  Disco 1    /dev/sda       En línea       4.00 TB    1024.0 GB       Seagate IronWolf Pro 4 TB NAS\n' +
-        '  Disco 2    /dev/sdb       En línea       32.0 GB    8 MB            SanDisk Ultra Flair USB 32 GB',
+      output: executeDiskpartCommand('list disk', createInitialDisks(), 0, null).output,
       status: 'info',
       source: 'cli',
     },
@@ -304,6 +307,15 @@ export default function App() {
         'gui',
         formatRes.linuxEquivalent
       );
+      if (formatRes.status === 'error') {
+        // La partición queda creada sin formato (como en DiskPart) y se explica por qué
+        setDisks(updatedDisks);
+        setSelectedPartitionId(newPartId);
+        setModalError(
+          `La partición se ha creado, pero no se ha podido formatear:\n${formatRes.output}`
+        );
+        return;
+      }
 
       if (newPartLetter.trim() && newPartFs !== 'swap') {
         const assignCmd = `assign letter=${newPartLetter.trim()}`;
@@ -652,7 +664,14 @@ export default function App() {
           setTourStepIndex((prev) => Math.min(tourSteps.length - 1, prev + 1))
         }
         onPrev={() => setTourStepIndex((prev) => Math.max(0, prev - 1))}
-        onClose={() => setIsTourOpen(false)}
+        onClose={() => {
+          setIsTourOpen(false);
+          try {
+            localStorage.setItem(TOUR_SEEN_KEY, '1');
+          } catch {
+            // Sin almacenamiento (modo privado): el tour volverá a abrirse en la próxima visita
+          }
+        }}
         onGoToStep={(idx) => {
           setActiveTab('workspace');
           setTourStepIndex(idx);
@@ -660,13 +679,13 @@ export default function App() {
       />
 
       {/* Top Bar Contract: 3 Zones separated by gap-8 */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-8 px-6 py-3.5 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-4 lg:gap-8 px-4 sm:px-6 py-3.5 bg-slate-950/95 backdrop-blur border-b border-slate-800">
         {/* Zone 1: Brand with User Logo (object-contain, never deformed) & Link */}
         <a
           href="https://www.unfantasmaenelsistema.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 text-base font-bold tracking-tight text-white hover:text-sky-300 transition-colors whitespace-nowrap shrink-0"
+          className="flex items-center gap-3 text-sm sm:text-base font-bold tracking-tight text-white hover:text-sky-300 transition-colors min-w-0"
           title="Visitar Un Fantasma en el Sistema (https://www.unfantasmaenelsistema.com/)"
         >
           <img
@@ -745,7 +764,8 @@ export default function App() {
             className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-lg inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
           >
             <Compass className="w-3.5 h-3.5" />
-            Tour Guiado
+            <span className="hidden sm:inline">Tour Guiado</span>
+            <span className="sm:hidden">Tour</span>
           </button>
         </div>
       </header>
@@ -1217,7 +1237,7 @@ export default function App() {
                     value={activeChallengeId}
                     onChange={(e) => setActiveChallengeId(e.target.value)}
                     aria-label="Seleccionar reto práctico"
-                    className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-200 focus:border-sky-500 focus:outline-none"
+                    className="w-full sm:w-auto max-w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-200 focus:border-sky-500 focus:outline-none"
                   >
                     {CHALLENGE_SCENARIOS.map((c) => (
                       <option key={c.id} value={c.id}>
