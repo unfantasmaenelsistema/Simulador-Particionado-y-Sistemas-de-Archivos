@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 540" width="1200" height="540" fill="none">
+  <rect width="1200" height="540" fill="#020617" />
+  <!-- Header -->
+  <rect x="24" y="24" width="1152" height="72" rx="12" fill="#0F172A" stroke="#1E293B" />
+  <text x="48" y="55" fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="16" font-weight="700">Retos Prácticos de Administración de Discos y Sistemas de Archivos</text>
+  <text x="48" y="76" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="12">Verificación automática en tiempo real con pistas duales en Windows DiskPart y GNU/Linux (parted / mkfs)</text>
+  <rect x="920" y="38" width="232" height="44" rx="8" fill="#020617" stroke="#1E293B" />
+  <text x="940" y="65" fill="#6EE7B7" font-family="monospace" font-size="13" font-weight="700">Progreso: 5 / 5 Retos</text>
+
+  <!-- Challenge Card 1 -->
+  <rect x="24" y="114" width="1152" height="195" rx="12" fill="#064E3B" fill-opacity="0.18" stroke="#059669" />
+  <text x="48" y="142" fill="#38BDF8" font-family="monospace" font-size="12" font-weight="700">RETO 02 · Nivel Intermedio · Disco Objetivo: Disco 0 · ESTADO: SUPERADO</text>
+  <text x="48" y="166" fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="15" font-weight="700">Superando el Límite de las 4 Primarias en MBR (EBR + Unidades Lógicas)</text>
+  <text x="48" y="188" fill="#CBD5E1" font-family="system-ui, sans-serif" font-size="12">Crea 3 particiones Primarias (1 Activa en NTFS), 1 Partición Extendida contenedora y al menos 2 Unidades Lógicas formateadas.</text>
+
+  <!-- 4 Checklist Items -->
+  <rect x="48" y="206" width="540" height="38" rx="7" fill="#064E3B" fill-opacity="0.35" stroke="#059669" />
+  <text x="68" y="230" fill="#A7F3D0" font-family="system-ui, sans-serif" font-size="12">✓ Firmware en BIOS/Legacy y Disco 0 con tabla MBR</text>
+  <text x="495" y="230" fill="#6EE7B7" font-family="monospace" font-size="11" font-weight="700">COMPLETADO</text>
+
+  <rect x="608" y="206" width="544" height="38" rx="7" fill="#064E3B" fill-opacity="0.35" stroke="#059669" />
+  <text x="628" y="230" fill="#A7F3D0" font-family="system-ui, sans-serif" font-size="12">✓ 3 Particiones Primarias creadas (con 1 marcada como Activa)</text>
+  <text x="1060" y="230" fill="#6EE7B7" font-family="monospace" font-size="11" font-weight="700">COMPLETADO</text>
+
+  <rect x="48" y="254" width="540" height="38" rx="7" fill="#064E3B" fill-opacity="0.35" stroke="#059669" />
+  <text x="68" y="278" fill="#A7F3D0" font-family="system-ui, sans-serif" font-size="12">✓ 1 Partición Extendida contenedora creada en la 4ª entrada MBR</text>
+  <text x="495" y="278" fill="#6EE7B7" font-family="monospace" font-size="11" font-weight="700">COMPLETADO</text>
+
+  <rect x="608" y="254" width="544" height="38" rx="7" fill="#064E3B" fill-opacity="0.35" stroke="#059669" />
+  <text x="628" y="278" fill="#A7F3D0" font-family="system-ui, sans-serif" font-size="12">✓ Al menos 2 Unidades Lógicas formateadas dentro de la Extendida</text>
+  <text x="1060" y="278" fill="#6EE7B7" font-family="monospace" font-size="11" font-weight="700">COMPLETADO</text>
+
+  <!-- Challenge Card 2 -->
+  <rect x="24" y="325" width="1152" height="190" rx="12" fill="#0F172A" stroke="#0284C7" />
+  <text x="48" y="353" fill="#38BDF8" font-family="monospace" font-size="12" font-weight="700">RETO 03 · Nivel Básico · Disco Objetivo: Disco 1 (HDD 4 TB) · ESTADO: SUPERADO</text>
+  <text x="48" y="377" fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="15" font-weight="700">Rompiendo la Barrera de los 2 TB en Discos de Gran Capacidad (Migración MBR 32-bit -&gt; GPT 64-bit)</text>
+  <rect x="48" y="396" width="1104" height="98" rx="8" fill="#020617" stroke="#1E293B" />
+  <text x="68" y="422" fill="#94A3B8" font-family="monospace" font-size="11">Secuencia Windows DiskPart:</text>
+  <text x="68" y="442" fill="#7DD3FC" font-family="monospace" font-size="12">select disk 1 -&gt; clean -&gt; convert gpt -&gt; create partition primary size=3145728 -&gt; format fs=ntfs label="Masivo4TB" quick</text>
+  <text x="68" y="468" fill="#94A3B8" font-family="monospace" font-size="11">Equivalencia GNU/Linux (parted / mkfs):</text>
+  <text x="68" y="486" fill="#FCD34D" font-family="monospace" font-size="12">parted /dev/sda mklabel gpt &amp;&amp; parted /dev/sda mkpart primary ext4 1MiB 100% &amp;&amp; mkfs.ext4 /dev/sda1</text>
+</svg>

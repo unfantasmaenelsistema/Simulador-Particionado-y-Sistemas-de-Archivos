@@ -1,0 +1,6 @@
+{
+  "name": "Simulador de Particionado y Sistemas de Archivos",
+  "description": "Simulador didáctico e interactivo de particionado de discos (MBR vs GPT, BIOS/Legacy vs UEFI), sistemas de archivos (NTFS, FAT32, ext4), cálculo de clústeres y consola DiskPart.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
